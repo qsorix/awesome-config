@@ -43,7 +43,7 @@ function add_titlebar(c)
 end
 
 function show_on_floating(c)
-    if awful.client.floating.get(c) then
+    if c.class ~= "Plugin-container" and awful.client.floating.get(c) then
         awful.titlebar.show(c)
     else
         awful.titlebar.hide(c)
