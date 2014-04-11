@@ -1,6 +1,7 @@
 -- Standard awesome library
 local gears = require("gears")
 local awful = require("awful")
+require("awful.remote")
 awful.rules = require("awful.rules")
 require("awful.autofocus")
 -- Widget and layout library
