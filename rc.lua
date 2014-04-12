@@ -119,7 +119,7 @@ markup = lain.util.markup
 
 -- Clock
 clockicon = wibox.widget.imagebox(beautiful.widget_clock)
-mytextclock = awful.widget.textclock()
+mytextclock = awful.widget.textclock(markup("#7788af", "%H:%M "))
 lain.widgets.calendar:attach(mytextclock, { font = "DejaVu Sans Mono", font_size = 10 })
 
 -- CPU
@@ -229,6 +229,8 @@ for s = 1, screen.count() do
     -- Widgets that are aligned to the right
     local right_layout = wibox.layout.fixed.horizontal()
 
+    if s == 1 then right_layout:add(wibox.widget.systray()) end
+
     right_layout:add(cpuicon)
     right_layout:add(cpuwidget)
     right_layout:add(netdownicon)
@@ -238,7 +240,6 @@ for s = 1, screen.count() do
     right_layout:add(memicon)
     right_layout:add(memwidget)
 
-    if s == 1 then right_layout:add(wibox.widget.systray()) end
     right_layout:add(clockicon)
     right_layout:add(mytextclock)
     right_layout:add(mylayoutbox[s])
