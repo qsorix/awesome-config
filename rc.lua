@@ -3,6 +3,9 @@ local gears = require("gears")
 local awful = require("awful")
 require("awful.remote")
 awful.rules = require("awful.rules")
+tyrannical = require("tyrannical")
+move_tags = require("move-tags")
+
 require("awful.autofocus")
 -- Widget and layout library
 local wibox = require("wibox")
@@ -12,6 +15,7 @@ local beautiful = require("beautiful")
 local naughty = require("naughty")
 local menubar = require("menubar")
 local titlebar = require("titlebar")
+local lain      = require("lain")
 
 -- {{{ Error handling
 -- Check if awesome encountered an error during startup and fell back to
@@ -40,7 +44,8 @@ end
 
 -- {{{ Variable definitions
 -- Themes define colours, icons, and wallpapers
-beautiful.init("/home/qsorix/.config/awesome/zenburn/theme.lua")
+-- beautiful.init(os.getevn("HOME") .. "/.config/awesome/themes/zenburn/theme.lua")
+beautiful.init(os.getenv("HOME") .. "/.config/awesome/themes/multicolor/theme.lua")
 
 -- This is used later as the default terminal and editor to run.
 terminal = "xfce4-terminal"
@@ -82,12 +87,7 @@ end
 
 -- {{{ Tags
 -- Define a tag table which hold all screen tags.
-tags = {}
-for s = 1, screen.count() do
-    -- Each screen has its own tag table.
-    -- by default use 2nd layout
-    tags[s] = awful.tag({ " 1", " 2", " 3", " 4", " 5", " 6", }, s, layouts[2])
-end
+require("tyrannical-config")
 -- }}}
 
 -- {{{ Menu
@@ -115,11 +115,41 @@ menubar.utils.terminal = terminal -- Set the terminal for applications that requ
 -- }}}
 
 -- {{{ Wibox
--- Create a textclock widget
-mytextclock = awful.widget.textclock()
-calendar2 = require('calendar2')
-calendar2.addCalendarToWidget(mytextclock)
+markup = lain.util.markup
 
+-- Clock
+clockicon = wibox.widget.imagebox(beautiful.widget_clock)
+mytextclock = awful.widget.textclock()
+lain.widgets.calendar:attach(mytextclock, { font = "DejaVu Sans Mono", font_size = 10 })
+
+-- CPU
+cpuicon = wibox.widget.imagebox()
+cpuicon:set_image(beautiful.widget_cpu)
+cpuwidget = lain.widgets.cpu({
+    settings = function()
+        widget:set_markup(markup("#e33a6e", cpu_now.usage .. "% "))
+    end
+})
+
+
+-- Net
+netdownicon = wibox.widget.imagebox(beautiful.widget_netdown)
+netdowninfo = wibox.widget.textbox()
+netupicon = wibox.widget.imagebox(beautiful.widget_netup)
+netupinfo = lain.widgets.net({
+    settings = function()
+        widget:set_markup(markup("#e54c62", net_now.sent .. " "))
+        netdowninfo:set_markup(markup("#87af5f", net_now.received .. " "))
+    end
+})
+
+-- MEM
+memicon = wibox.widget.imagebox(beautiful.widget_mem)
+memwidget = lain.widgets.mem({
+    settings = function()
+        widget:set_markup(markup("#e0da37", mem_now.used .. "M "))
+    end
+})
 
 -- Create a wibox for each screen and add it
 mywibox = {}
@@ -127,7 +157,7 @@ mypromptbox = {}
 mylayoutbox = {}
 mytaglist = {}
 mytaglist.buttons = awful.util.table.join(
-                    awful.button({ }, 1, awful.tag.viewonly),
+                    awful.button({ }, 1, function(t) awful.tag.viewonly(t); move_tags.move_tags(t) end),
                     awful.button({ modkey }, 1, awful.client.movetotag),
                     awful.button({ }, 3, awful.tag.viewtoggle),
                     awful.button({ modkey }, 3, awful.client.toggletag),
@@ -182,7 +212,7 @@ for s = 1, screen.count() do
                            awful.button({ }, 4, function () awful.layout.inc(layouts, 1) end),
                            awful.button({ }, 5, function () awful.layout.inc(layouts, -1) end)))
     -- Create a taglist widget
-    mytaglist[s] = awful.widget.taglist(s, awful.widget.taglist.filter.all, mytaglist.buttons)
+    mytaglist[s] = awful.widget.taglist.new(s, awful.widget.taglist.filter.all, mytaglist.buttons)
 
     -- Create a tasklist widget
     mytasklist[s] = awful.widget.tasklist(s, awful.widget.tasklist.filter.currenttags, mytasklist.buttons)
@@ -198,7 +228,18 @@ for s = 1, screen.count() do
 
     -- Widgets that are aligned to the right
     local right_layout = wibox.layout.fixed.horizontal()
+
+    right_layout:add(cpuicon)
+    right_layout:add(cpuwidget)
+    right_layout:add(netdownicon)
+    right_layout:add(netdowninfo)
+    right_layout:add(netupicon)
+    right_layout:add(netupinfo)
+    right_layout:add(memicon)
+    right_layout:add(memwidget)
+
     if s == 1 then right_layout:add(wibox.widget.systray()) end
+    right_layout:add(clockicon)
     right_layout:add(mytextclock)
     right_layout:add(mylayoutbox[s])
 
@@ -301,41 +342,41 @@ clientkeys = awful.util.table.join(
         end)
 )
 
--- Compute the maximum number of digit we need, limited to 9
-keynumber = 0
-for s = 1, screen.count() do
-   keynumber = math.min(9, math.max(#tags[s], keynumber))
-end
-
 -- Bind all key numbers to tags.
 -- Be careful: we use keycodes to make it works on any keyboard layout.
 -- This should map on the top row of your keyboard, usually 1 to 9.
-for i = 1, keynumber do
+for i = 1, 9 do
     globalkeys = awful.util.table.join(globalkeys,
         awful.key({ modkey }, "#" .. i + 9,
                   function ()
                         local screen = mouse.screen
-                        if tags[screen][i] then
-                            awful.tag.viewonly(tags[screen][i])
+                        local tag = awful.tag.gettags(screen)[i]
+                        if tag then
+                           awful.tag.viewonly(tag)
                         end
                   end),
         awful.key({ modkey, "Control" }, "#" .. i + 9,
                   function ()
                       local screen = mouse.screen
-                      if tags[screen][i] then
-                          awful.tag.viewtoggle(tags[screen][i])
+                      local tag = awful.tag.gettags(screen)[i]
+                      if tag then
+                         awful.tag.viewtoggle(tag)
                       end
                   end),
         awful.key({ modkey, "Shift" }, "#" .. i + 9,
                   function ()
-                      if client.focus and tags[client.focus.screen][i] then
-                          awful.client.movetotag(tags[client.focus.screen][i])
-                      end
+                      local screen = mouse.screen
+                      local tag = awful.tag.gettags(screen)[i]
+                      if client.focus and tag then
+                          awful.client.movetotag(tag)
+                     end
                   end),
         awful.key({ modkey, "Control", "Shift" }, "#" .. i + 9,
                   function ()
-                      if client.focus and tags[client.focus.screen][i] then
-                          awful.client.toggletag(tags[client.focus.screen][i])
+                      local screen = mouse.screen
+                      local tag = awful.tag.gettags(screen)[i]
+                      if client.focus and tag then
+                          awful.client.toggletag(tag)
                       end
                   end))
 end
@@ -365,8 +406,7 @@ awful.rules.rules = {
     { rule = { class = "gimp" },
       properties = { floating = true } },
     { rule_any = { role = {"gimp-dock", "gimp-toolbox" } },
-      properties = { focus = false,
-                     ontop=true } },
+      properties = { focus = false, above = true } },
     { rule = { class = "Plugin-container" },
       properties = { floating = true } },
     { rule = { name = "System Shock 2 Patch Final 2.42" },
@@ -393,7 +433,7 @@ client.connect_signal("manage", function (c, startup)
     if not startup then
         -- Set the windows at the slave,
         -- i.e. put it at the end of others instead of setting it master.
-        -- awful.client.setslave(c)
+        awful.client.setslave(c)
 
         -- Put windows in a smart way, only if they does not set an initial position.
         if not c.size_hints.user_position and not c.size_hints.program_position then

@@ -1,0 +1,9 @@
+[submodule "tyrannical"]
+	path = tyrannical
+	url = https://github.com/Elv13/tyrannical.git
+[submodule "obvious"]
+	path = obvious
+	url = git@github.com:hoelzro/obvious.git
+[submodule "lain"]
+	path = lain
+	url = https://github.com/copycat-killer/lain.git
