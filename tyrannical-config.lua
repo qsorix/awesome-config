@@ -43,17 +43,6 @@ tyrannical.tags = {
         }
     } ,
     {
-        name = "Develop",
-        init        = true,
-        exclusive   = true,
-        screen      = 1,
-        clone_on    = 2, -- Create a single instance of this tag on screen 1, but also show it on screen 2
-                         -- The tag can be used on both screen, but only one at once
-        layout      = awful.layout.suit.max                          ,
-        class ={ 
-            "Kate", "KDevelop", "Codeblocks", "Code::Blocks" , "DDD", "kate4"}
-    } ,
-    {
         name        = "Doc",
         init        = false, -- This tag wont be created at startup, but will be when one of the
                              -- client in the "class" section will start. It will be created on
