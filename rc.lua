@@ -1,10 +1,10 @@
 -- Standard awesome library
 local gears = require("gears")
 local awful = require("awful")
+local common = require("awful.widget.common")
 require("awful.remote")
 awful.rules = require("awful.rules")
 tyrannical = require("tyrannical")
-move_tags = require("move-tags")
 
 require("awful.autofocus")
 -- Widget and layout library
@@ -151,13 +151,92 @@ memwidget = lain.widgets.mem({
     end
 })
 
+local function taglist_update(w, buttons, label, data, objects)
+    print("update, we're home")
+    -- update the widgets, creating them if needed
+    w:reset()
+    for i, o in ipairs(objects) do
+        local cache = data[o]
+        local ib, tb, bgb, m, l
+        if cache then
+            ib = cache.ib
+            tb = cache.tb
+            bgb = cache.bgb
+            m   = cache.m
+        else
+            ib = wibox.widget.imagebox()
+            tb = wibox.widget.textbox()
+            bgb = wibox.widget.background()
+            m = wibox.layout.margin(tb, 4, 4)
+            l = wibox.layout.fixed.horizontal()
+
+            -- All of this is added in a fixed widget
+            l:fill_space(true)
+            l:add(ib)
+            l:add(m)
+
+            -- remeber for which tag this widget is created
+            tb.tag = o
+
+            -- And all of this gets a background
+            bgb:set_widget(l)
+
+            bgb:buttons(common.create_buttons(buttons, o))
+
+            data[o] = {
+                ib = ib,
+                tb = tb,
+                bgb = bgb,
+                m   = m
+            }
+        end
+
+        local text, bg, bg_image, icon = label(o)
+        -- The text might be invalid, so use pcall
+        if not pcall(tb.set_markup, tb, text) then
+            tb:set_markup("<i>&lt;Invalid text&gt;</i>")
+        end
+        bgb:set_bg(bg)
+        if type(bg_image) == "function" then
+            bg_image = bg_image(tb,o,m,objects,i)
+        end
+        bgb:set_bgimage(bg_image)
+        ib:set_image(icon)
+        w:add(bgb)
+   end
+end
+
+local function tag_drag(t)
+    local dr = mywibox[1]._drawable
+
+    mousegrabber.run(function (_mouse)
+                              for k, v in ipairs(_mouse.buttons) do
+                                  if v then
+                                      local x = _mouse.x
+                                      local y = _mouse.y
+
+                                      local widgets = dr:find_widgets(x,y)
+
+                                      local target_tag = widgets[1].widget.tag
+
+                                      if target_tag and t ~= target_tag then
+                                          local idx = awful.tag.getidx(target_tag)
+                                          awful.tag.move(idx, t)
+                                      end
+                                      return true
+                                  end
+                              end
+                              return false
+                          end, "fleur")
+end
+
 -- Create a wibox for each screen and add it
 mywibox = {}
 mypromptbox = {}
 mylayoutbox = {}
 mytaglist = {}
 mytaglist.buttons = awful.util.table.join(
-                    awful.button({ }, 1, function(t) awful.tag.viewonly(t); move_tags.move_tags(t) end),
+                    awful.button({ }, 1, function(t) awful.tag.viewonly(t); tag_drag(t) end),
                     awful.button({ modkey }, 1, awful.client.movetotag),
                     awful.button({ }, 3, awful.tag.viewtoggle),
                     awful.button({ modkey }, 3, awful.client.toggletag),
@@ -212,7 +291,7 @@ for s = 1, screen.count() do
                            awful.button({ }, 4, function () awful.layout.inc(layouts, 1) end),
                            awful.button({ }, 5, function () awful.layout.inc(layouts, -1) end)))
     -- Create a taglist widget
-    mytaglist[s] = awful.widget.taglist.new(s, awful.widget.taglist.filter.all, mytaglist.buttons)
+    mytaglist[s] = awful.widget.taglist.new(s, awful.widget.taglist.filter.all, mytaglist.buttons, nil, taglist_update)
 
     -- Create a tasklist widget
     mytasklist[s] = awful.widget.tasklist(s, awful.widget.tasklist.filter.currenttags, mytasklist.buttons)
@@ -452,3 +531,5 @@ end)
 client.connect_signal("focus", function(c) c.border_color = beautiful.border_focus end)
 client.connect_signal("unfocus", function(c) c.border_color = beautiful.border_normal end)
 -- }}}
+--
+-- vim: filetype=lua:expandtab:shiftwidth=4:tabstop=8:softtabstop=4:textwidth=80
